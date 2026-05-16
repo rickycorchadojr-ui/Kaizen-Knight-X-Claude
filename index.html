@@ -99,16 +99,16 @@
     }
 
     .pet-zone{
-      width:240px;
-      height:130px;
+      width:180px;
+      height:78px;
       position:relative;
-      margin-bottom:-10px;
+      margin-bottom:8px;
     }
 
     .pet-walker{
       position:absolute;
       left:50%;
-      bottom:28px;
+      bottom:0;
       transform:translateX(-50%);
     }
 
@@ -116,23 +116,18 @@
       animation:bob 1.2s infinite steps(2);
     }
 
-    .knight-img{
-      width:160px;
-      height:160px;
+    .knight{
+      font-size:58px;
+      line-height:1;
       display:block;
-      image-rendering:pixelated;
-      image-rendering:crisp-edges;
-      -ms-interpolation-mode:nearest-neighbor;
-      object-fit:contain;
-      opacity:.92;
-      filter:grayscale(1) contrast(2) brightness(.55);
+      transform-origin:center center;
     }
 
-    .pet-walker.right .knight-img{
+    .pet-walker.right .knight{
       transform:scaleX(-1);
     }
 
-    .pet-walker.left .knight-img{
+    .pet-walker.left .knight{
       transform:scaleX(1);
     }
 
@@ -336,7 +331,6 @@ let weekKey=getWeekKey();
 let state=loadState();
 
 let moveTimer=null;
-let blinkTimer=null;
 let petStep=0;
 let poweredOn=false;
 
@@ -508,12 +502,12 @@ function renderDays(){
   }
 }
 
-function petHTML(){
+function petHTML(symbol){
   return `
     <div class="pet-zone">
       <div class="pet-walker left" id="petWalker">
         <div class="pet-bob">
-          <img class="knight-img" id="knightImg" src="knight.png" alt="Kaizen Knight">
+          <div class="knight">${symbol}</div>
         </div>
       </div>
     </div>
@@ -522,25 +516,6 @@ function petHTML(){
 
 function stopPet(){
   clearInterval(moveTimer);
-  clearInterval(blinkTimer);
-}
-
-function startBlink(){
-  clearInterval(blinkTimer);
-
-  blinkTimer=setInterval(()=>{
-    const knight=document.getElementById("knightImg");
-    if(!knight) return;
-
-    knight.src="blink.png";
-
-    setTimeout(()=>{
-      const knightAgain=document.getElementById("knightImg");
-      if(knightAgain){
-        knightAgain.src="knight.png";
-      }
-    },140);
-  },3600);
 }
 
 function startPet(delay=0){
@@ -552,8 +527,6 @@ function startPet(delay=0){
 
     petStep=0;
     walker.style.left=petPositions[petStep]+"%";
-
-    startBlink();
 
     moveTimer=setInterval(()=>{
       const current=petPositions[petStep];
@@ -612,7 +585,7 @@ function showMain(fromBoot=false){
 
   if(todayIndex < 0){
     document.getElementById("playArea").innerHTML =
-      petHTML() +
+      petHTML("♞") +
       "<div class='ground'></div>" +
       "<div class='textbox'>" +
       dateString + " • " + timeString +
@@ -626,17 +599,20 @@ function showMain(fromBoot=false){
 
   let status = state.statuses[todayIndex];
   let text = "STEADY";
+  let symbol = "♞";
 
   if(status === "complete"){
     text = "DAY LOCKED CLEAN";
+    symbol = "♔";
   }
 
   if(status === "failed"){
     text = "INTEGRITY DAMAGED";
+    symbol = "♜";
   }
 
   document.getElementById("playArea").innerHTML =
-    petHTML() +
+    petHTML(symbol) +
     "<div class='ground'></div>" +
     "<div class='textbox'>" +
     dateString + " • " + timeString +
@@ -710,7 +686,7 @@ function lockInDay(){
   if(passed){playVictory()}else{playFailure()}
 
   document.getElementById("playArea").innerHTML =
-    petHTML() +
+    petHTML(passed?"♔":"♜") +
     "<div class='ground'></div>" +
     "<div class='textbox'>" +
     "DAY LOCKED<br>"+total+"/10 RULES KEPT<br>"+
@@ -734,7 +710,7 @@ function showWeek(){
   let active=state.statuses.filter(s=>s!=="inactive").length;
 
   document.getElementById("playArea").innerHTML =
-    petHTML() +
+    petHTML("♞") +
     "<div class='ground'></div>" +
     "<div class='textbox'>" +
     "WEEK "+weekKey+"<br>"+
