@@ -24,7 +24,7 @@
     .off .status-bar,.boot-dark .status-bar{color:#e9ecd8;border-bottom:4px solid #e9ecd8;}
     .play-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center;box-sizing:border-box;overflow:hidden;position:relative;}
     .achievement-banner{position:absolute;top:0;left:50%;transform:translate(-50%,-120%);background:#111;color:#f8f8f8;border:4px solid #f8f8f8;font-size:30px;line-height:1;padding:7px 18px;z-index:20;white-space:nowrap;letter-spacing:2px;pointer-events:none;}
-    .achievement-banner.show{animation:achievementDrop 2.05s steps(8) forwards;}
+    .achievement-banner.show{animation:achievementDrop 2.05s forwards;}
     @keyframes achievementDrop{
       0%{transform:translate(-50%,-120%);}
       18%{transform:translate(-50%,8px);}
@@ -162,10 +162,15 @@ function getTodaysVows(){
   return weekdayVows;
 }
 
-function makeToneWav(freq=440,duration=.1,volume=.7){
+function makeToneSequenceWav(sequence){
   const sampleRate=22050;
-  const samples=Math.floor(sampleRate*duration);
-  const dataSize=samples*2;
+  let totalSamples=0;
+
+  for(let i=0;i<sequence.length;i++){
+    totalSamples+=Math.floor(sampleRate*sequence[i].duration);
+  }
+
+  const dataSize=totalSamples*2;
   const buffer=new ArrayBuffer(44+dataSize);
   const view=new DataView(buffer);
 
@@ -187,12 +192,27 @@ function makeToneWav(freq=440,duration=.1,volume=.7){
   writeString(36,"data");
   view.setUint32(40,dataSize,true);
 
-  for(let i=0;i<samples;i++){
-    const t=i/sampleRate;
-    const square=Math.sin(2*Math.PI*freq*t)>=0?1:-1;
-    const fade=1-(i/samples);
-    const sample=square*volume*fade*32767;
-    view.setInt16(44+i*2,sample,true);
+  let sampleIndex=0;
+
+  for(let s=0;s<sequence.length;s++){
+    const freq=sequence[s].freq;
+    const duration=sequence[s].duration;
+    const volume=sequence[s].volume || .7;
+    const samples=Math.floor(sampleRate*duration);
+
+    for(let i=0;i<samples;i++){
+      let sample=0;
+
+      if(freq>0){
+        const t=i/sampleRate;
+        const square=Math.sin(2*Math.PI*freq*t)>=0?1:-1;
+        const fade=1-(i/samples);
+        sample=square*volume*fade*32767;
+      }
+
+      view.setInt16(44+sampleIndex*2,sample,true);
+      sampleIndex++;
+    }
   }
 
   let binary="";
@@ -203,19 +223,54 @@ function makeToneWav(freq=440,duration=.1,volume=.7){
 }
 
 function buildSounds(){
-  sounds.tick=new Audio(makeToneWav(720,.04,.7));
-  sounds.menu=new Audio(makeToneWav(500,.08,.7));
-  sounds.fail=new Audio(makeToneWav(180,.25,.8));
-  sounds.reset=new Audio(makeToneWav(220,.18,.7));
-  sounds.boot1=new Audio(makeToneWav(196,.09,.8));
-  sounds.boot2=new Audio(makeToneWav(294,.1,.8));
-  sounds.boot3=new Audio(makeToneWav(392,.1,.85));
-  sounds.boot4=new Audio(makeToneWav(523,.15,.9));
-  sounds.good1=new Audio(makeToneWav(523,.12,.8));
-  sounds.good2=new Audio(makeToneWav(659,.12,.8));
-  sounds.good3=new Audio(makeToneWav(784,.22,.85));
-  sounds.achHigh=new Audio(makeToneWav(880,.055,.85));
-  sounds.achLow=new Audio(makeToneWav(520,.055,.85));
+  sounds.tick=new Audio(makeToneSequenceWav([
+    {freq:720,duration:.04,volume:.7}
+  ]));
+
+  sounds.menu=new Audio(makeToneSequenceWav([
+    {freq:500,duration:.08,volume:.7}
+  ]));
+
+  sounds.fail=new Audio(makeToneSequenceWav([
+    {freq:180,duration:.25,volume:.8}
+  ]));
+
+  sounds.reset=new Audio(makeToneSequenceWav([
+    {freq:220,duration:.18,volume:.7}
+  ]));
+
+  sounds.boot=new Audio(makeToneSequenceWav([
+    {freq:196,duration:.09,volume:.8},
+    {freq:0,duration:.06},
+    {freq:294,duration:.10,volume:.8},
+    {freq:0,duration:.07},
+    {freq:392,duration:.10,volume:.85},
+    {freq:0,duration:.08},
+    {freq:523,duration:.15,volume:.9}
+  ]));
+
+  sounds.good=new Audio(makeToneSequenceWav([
+    {freq:523,duration:.12,volume:.8},
+    {freq:0,duration:.04},
+    {freq:659,duration:.12,volume:.8},
+    {freq:0,duration:.04},
+    {freq:784,duration:.22,volume:.85}
+  ]));
+
+  sounds.achievement=new Audio(makeToneSequenceWav([
+    {freq:880,duration:.055,volume:.85},
+    {freq:0,duration:.025},
+    {freq:520,duration:.055,volume:.85},
+    {freq:0,duration:.06},
+    {freq:880,duration:.055,volume:.85},
+    {freq:0,duration:.025},
+    {freq:520,duration:.055,volume:.85},
+    {freq:0,duration:.06},
+    {freq:880,duration:.055,volume:.85},
+    {freq:0,duration:.025},
+    {freq:520,duration:.055,volume:.85}
+  ]));
+
   sounds.firework=new Audio("8d82b5_Super_Mario_Bros_Fireworks_Sound_Effect.mp3");
   sounds.perfectWeek=new Audio("fever-stage-clear (online-video-cutter.com).mp3");
 }
@@ -227,18 +282,11 @@ function play(name){
 }
 
 function playGoodSeal(){
-  play("good1");
-  setTimeout(()=>play("good2"),160);
-  setTimeout(()=>play("good3"),320);
+  play("good");
 }
 
 function playAchievementSound(){
-  play("achHigh");
-  setTimeout(()=>play("achLow"),80);
-  setTimeout(()=>play("achHigh"),170);
-  setTimeout(()=>play("achLow"),250);
-  setTimeout(()=>play("achHigh"),340);
-  setTimeout(()=>play("achLow"),420);
+  play("achievement");
 }
 
 function getTradingDayIndex(){
@@ -522,11 +570,7 @@ function powerOn(){
   if(poweredOn) return;
   poweredOn=true;
 
-  play("boot1");
-  setTimeout(()=>play("boot2"),150);
-  setTimeout(()=>play("boot3"),320);
-  setTimeout(()=>play("boot4"),500);
-
+  play("boot");
   showBoot();
 }
 
