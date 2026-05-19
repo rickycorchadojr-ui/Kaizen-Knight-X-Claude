@@ -22,7 +22,8 @@
     .screen.off,.screen.boot-dark{background:#111;}
     .status-bar{height:38px;border-bottom:4px solid #111;display:flex;justify-content:center;align-items:center;font-size:24px;letter-spacing:2px;flex-shrink:0;}
     .off .status-bar,.boot-dark .status-bar{color:#e9ecd8;border-bottom:4px solid #e9ecd8;}
-    .play-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center;box-sizing:border-box;overflow:hidden;}
+    .play-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center;box-sizing:border-box;overflow:hidden;position:relative;}
+    .streak-counter{position:absolute;top:8px;right:10px;font-size:32px;line-height:.8;color:#111;text-align:right;min-width:0;font-family:'VT323',monospace;letter-spacing:1px;z-index:5;}
     .power-quote{width:88%;background:#111;color:#e9ecd8;border:4px solid #e9ecd8;font-family:'VT323',monospace;font-size:24px;line-height:1.02;padding:14px 12px;box-shadow:none;text-align:center;}
     .power-author{display:block;margin-top:10px;font-size:22px;}
     .boot-text{color:#e9ecd8;font-size:32px;letter-spacing:2px;animation:bootPulse .8s infinite steps(2);}
@@ -228,6 +229,7 @@ function getWeekKey(){
 function freshState(){
   return{
     weekKey:weekKey,
+    streak:0,
     statuses:["inactive","inactive","inactive","inactive","inactive","inactive"],
     sundayVows:Array(sundayVows.length).fill(false),
     weekdayVows:Array.from({length:6},()=>Array(weekdayVows.length).fill(false)),
@@ -245,6 +247,7 @@ function loadState(){
     if(!parsed.sundayVows || parsed.sundayVows.length!==sundayVows.length) return freshState();
     if(!parsed.weekdayVows || parsed.weekdayVows[1].length!==weekdayVows.length) return freshState();
     if(!parsed.damage || parsed.damage[0].length!==damageStates.length) return freshState();
+    if(typeof parsed.streak!=="number") parsed.streak=cleanCountFromStatuses(parsed.statuses);
     return parsed;
   }catch(e){
     return freshState();
@@ -253,6 +256,11 @@ function loadState(){
 
 function saveState(){
   localStorage.setItem("kaizenKnightV5",JSON.stringify(state));
+}
+
+function cleanCountFromStatuses(statuses){
+  if(!statuses) return 0;
+  return statuses.filter(s=>s==="complete").length;
 }
 
 function getVowStateForToday(){
@@ -265,6 +273,10 @@ function getPetImage(type){
   if(type==="rook") return "rook.png";
   if(type==="angel") return "angel.png";
   return "knight.png";
+}
+
+function streakHTML(){
+  return "<div class='streak-counter'>"+state.streak+"</div>";
 }
 
 function petHTML(type="knight"){
@@ -432,6 +444,7 @@ function showMain(fromBoot=false){
   }
 
   document.getElementById("playArea").innerHTML=
+    streakHTML()+
     petHTML(petType)+
     "<div class='ground'></div>"+
     "<div class='textbox'>"+
@@ -563,6 +576,13 @@ function lockDay(){
   }
 
   state.statuses[todayIndex]=passed ? "complete" : "failed";
+
+  if(passed){
+    state.streak++;
+  }else{
+    state.streak=0;
+  }
+
   saveState();
 
   let shouldPlayFirework=passed && todayIndex===5 && perfectWeek();
@@ -591,6 +611,7 @@ function lockDay(){
   }
 
   document.getElementById("playArea").innerHTML=
+    streakHTML()+
     petHTML(petType)+
     "<div class='ground'></div>"+
     "<div class='textbox'>"+
