@@ -23,6 +23,14 @@
     .status-bar{height:38px;border-bottom:4px solid #111;display:flex;justify-content:center;align-items:center;font-size:24px;letter-spacing:2px;flex-shrink:0;}
     .off .status-bar,.boot-dark .status-bar{color:#e9ecd8;border-bottom:4px solid #e9ecd8;}
     .play-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center;box-sizing:border-box;overflow:hidden;position:relative;}
+    .achievement-banner{position:absolute;top:0;left:50%;transform:translate(-50%,-120%);background:#111;color:#f8f8f8;border:4px solid #f8f8f8;font-size:30px;line-height:1;padding:7px 18px;z-index:20;white-space:nowrap;letter-spacing:2px;pointer-events:none;}
+    .achievement-banner.show{animation:achievementDrop 2.05s steps(8) forwards;}
+    @keyframes achievementDrop{
+      0%{transform:translate(-50%,-120%);}
+      18%{transform:translate(-50%,8px);}
+      72%{transform:translate(-50%,8px);}
+      100%{transform:translate(-50%,-120%);}
+    }
     .streak-counter{position:absolute;top:8px;right:10px;font-size:32px;line-height:.8;color:#111;text-align:right;min-width:0;font-family:'VT323',monospace;letter-spacing:1px;z-index:5;}
     .power-quote{width:88%;background:#111;color:#e9ecd8;border:4px solid #e9ecd8;font-family:'VT323',monospace;font-size:24px;line-height:1.02;padding:14px 12px;box-shadow:none;text-align:center;}
     .power-author{display:block;margin-top:10px;font-size:22px;}
@@ -140,6 +148,7 @@ let poweredOn=false;
 
 let fireworkTimer=null;
 let fireworkFrame=1;
+let achievementTimer=null;
 
 const petPositions=[50,40,32,32,44,58,66,66,54,50];
 const sounds={};
@@ -205,6 +214,8 @@ function buildSounds(){
   sounds.good1=new Audio(makeToneWav(523,.12,.8));
   sounds.good2=new Audio(makeToneWav(659,.12,.8));
   sounds.good3=new Audio(makeToneWav(784,.22,.85));
+  sounds.achHigh=new Audio(makeToneWav(880,.055,.85));
+  sounds.achLow=new Audio(makeToneWav(520,.055,.85));
   sounds.firework=new Audio("8d82b5_Super_Mario_Bros_Fireworks_Sound_Effect.mp3");
   sounds.perfectWeek=new Audio("fever-stage-clear (online-video-cutter.com).mp3");
 }
@@ -219,6 +230,15 @@ function playGoodSeal(){
   play("good1");
   setTimeout(()=>play("good2"),160);
   setTimeout(()=>play("good3"),320);
+}
+
+function playAchievementSound(){
+  play("achHigh");
+  setTimeout(()=>play("achLow"),80);
+  setTimeout(()=>play("achHigh"),170);
+  setTimeout(()=>play("achLow"),250);
+  setTimeout(()=>play("achHigh"),340);
+  setTimeout(()=>play("achLow"),420);
 }
 
 function getTradingDayIndex(){
@@ -241,6 +261,7 @@ function freshState(){
   return{
     weekKey:weekKey,
     streak:0,
+    bestStreak:0,
     finalForm:null,
     statuses:["inactive","inactive","inactive","inactive","inactive","inactive"],
     sundayVows:Array(sundayVows.length).fill(false),
@@ -259,6 +280,7 @@ function loadState(){
     if(parsed.weekKey!==weekKey){
       let newState=freshState();
       newState.streak=typeof parsed.streak==="number" ? parsed.streak : 0;
+      newState.bestStreak=typeof parsed.bestStreak==="number" ? parsed.bestStreak : newState.streak;
       return newState;
     }
 
@@ -266,6 +288,7 @@ function loadState(){
     if(!parsed.weekdayVows || parsed.weekdayVows[1].length!==weekdayVows.length) return freshState();
     if(!parsed.damage || parsed.damage[0].length!==damageStates.length) return freshState();
     if(typeof parsed.streak!=="number") parsed.streak=cleanCountFromStatuses(parsed.statuses);
+    if(typeof parsed.bestStreak!=="number") parsed.bestStreak=parsed.streak;
     if(typeof parsed.finalForm==="undefined") parsed.finalForm=null;
 
     return parsed;
@@ -324,6 +347,10 @@ function streakHTML(){
   return "<div class='streak-counter'>"+state.streak+"</div>";
 }
 
+function achievementHTML(){
+  return "<div class='achievement-banner' id='achievementBanner'></div>";
+}
+
 function petHTML(type="knight"){
   return `
     <div class="pet-zone">
@@ -378,6 +405,26 @@ function startFirework(){
 
     fw.src="Firework"+fireworkFrame+".png";
   },500);
+}
+
+function showAchievementBanner(dayNum){
+  clearTimeout(achievementTimer);
+
+  const banner=document.getElementById("achievementBanner");
+  if(!banner) return;
+
+  banner.className="achievement-banner";
+  banner.innerHTML="DAY "+dayNum+"!";
+
+  void banner.offsetWidth;
+
+  playAchievementSound();
+  banner.classList.add("show");
+
+  achievementTimer=setTimeout(()=>{
+    banner.className="achievement-banner";
+    banner.innerHTML="";
+  },2100);
 }
 
 function startPet(delay=0){
@@ -530,6 +577,7 @@ function showMain(fromBoot=false){
   }
 
   document.getElementById("playArea").innerHTML=
+    achievementHTML()+
     streakHTML()+
     petHTML(petType)+
     "<div class='ground'></div>"+
@@ -675,8 +723,15 @@ function lockDay(){
 
   state.statuses[todayIndex]=passed ? "complete" : "failed";
 
+  let newRecord=false;
+
   if(passed){
     state.streak++;
+
+    if(state.streak>state.bestStreak && state.streak<=365){
+      state.bestStreak=state.streak;
+      newRecord=true;
+    }
   }else{
     state.streak=0;
   }
@@ -726,6 +781,7 @@ function lockDay(){
   }
 
   document.getElementById("playArea").innerHTML=
+    achievementHTML()+
     streakHTML()+
     petHTML(petType)+
     "<div class='ground'></div>"+
@@ -739,6 +795,10 @@ function lockDay(){
   if(shouldPlayFirework){
     setTimeout(()=>startFirework(),450);
   }
+
+  if(newRecord){
+    setTimeout(()=>showAchievementBanner(state.streak),650);
+  }
 }
 
 function resetWeek(){
@@ -748,9 +808,11 @@ function resetWeek(){
   stopFirework();
 
   let savedStreak=state.streak;
+  let savedBestStreak=state.bestStreak;
 
   state=freshState();
   state.streak=savedStreak;
+  state.bestStreak=savedBestStreak;
 
   saveState();
   showMain();
