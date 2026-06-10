@@ -743,7 +743,7 @@ const powerQuotes=[
   }
 ];
 
-const APP_VERSION="8.2.2";
+const APP_VERSION="8.2.3";
 const DEBUG_MODE=false;
 const days=["SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY"];
 let todayIndex=getTradingDayIndex();
@@ -2456,7 +2456,7 @@ function toggleRecoveryDamage(i){
   saveState();
   showRecoveryCheck(scrollTop);
 }
-function showAfterActionReport(){
+function showAfterActionReport(restoreScroll=null){
   if(!requirePower()) return;
   if(todayIndex<0){
     showMain();
@@ -2471,7 +2471,7 @@ function showAfterActionReport(){
   let html="";
   html+="<div class='panel'>";
   html+="<div class='panel-title'>AFTER ACTION REPORT</div>";
-  html+="<div class='scroll'>";
+  html+="<div class='scroll' id='actionScroll'>";
   html+="<div class='small-note'>LOSS IS NOT DAMAGE. RECORD THE LESSON.</div>";
 
   html+="<div class='section-label'>MARKET CONDITION</div>";
@@ -2514,11 +2514,18 @@ function showAfterActionReport(){
   html+="</div>";
 
   document.getElementById("playArea").innerHTML=html;
+  if(restoreScroll!==null){
+    const sc=document.getElementById("actionScroll");
+    if(sc) sc.scrollTop=restoreScroll;
+  }
 }
-
+function getActionScrollTop(){
+  const sc=document.getElementById("actionScroll");
+  return sc ? sc.scrollTop : 0;
+}
 function chooseActionCondition(i){
   if(!requirePower()) return;
-
+  const scrollTop=getActionScrollTop();
   if(state.actionCondition===i){
     state.actionCondition=null;
     play("reset");
@@ -2528,12 +2535,12 @@ function chooseActionCondition(i){
   }
 
   saveState();
-  showAfterActionReport();
+  showAfterActionReport(scrollTop);
 }
 
 function chooseActionLesson(i){
   if(!requirePower()) return;
-
+  const scrollTop=getActionScrollTop();
   if(state.actionLesson===i){
     state.actionLesson=null;
     play("reset");
@@ -2543,12 +2550,12 @@ function chooseActionLesson(i){
   }
 
   saveState();
-  showAfterActionReport();
+  showAfterActionReport(scrollTop);
 }
 
 function chooseActionState(i){
   if(!requirePower()) return;
-
+  const scrollTop=getActionScrollTop();
   if(state.actionState===i){
     state.actionState=null;
     play("reset");
@@ -2558,12 +2565,12 @@ function chooseActionState(i){
   }
 
   saveState();
-  showAfterActionReport();
+  showAfterActionReport(scrollTop);
 }
 
 function chooseActionReframe(i){
   if(!requirePower()) return;
-
+  const scrollTop=getActionScrollTop();
   if(state.actionReframe===i){
     state.actionReframe=null;
     play("reset");
@@ -2573,7 +2580,7 @@ function chooseActionReframe(i){
   }
 
   saveState();
-  showAfterActionReport();
+  showAfterActionReport(scrollTop);
 }
 
 function showDamageDiagnosis(){
@@ -3321,7 +3328,8 @@ function showGallery(mode="trophies"){
   play("menu");
   stopPet();
   stopFirework();
-  ensureAchievementArchive();
+  document.getElementById("statusBar").innerHTML="GALLERY";
+ensureAchievementArchive();
   ensureVault();
 
   const achievementDays=getAchievementDays();
@@ -3366,10 +3374,6 @@ html+="<div class='gallery-title'>";
 
 html+="<div class='record-line'>REST THIS WEEK: "+recoveryCountThisWeek()+"</div>";
 html+="<div class='record-line'>REST THIS MONTH: "+recoveryCountThisMonth()+"</div>";
-html+="<div class='record-line'>AFTER ACTION REPORTS: "+actionReportCount()+"</div>";
-html+="<div class='record-line'>TOP CONDITION: "+mostCommonActionField("condition")+"</div>";
-html+="<div class='record-line'>TOP LESSON: "+mostCommonActionField("lesson")+"</div>";
-html+="<div class='record-line'>TOP STATE: "+mostCommonActionField("state")+"</div>";
 
 if(!state.records || state.records.length<=0){
   html+="<div class='small-note' style='margin-top:14px;'>NO WEEK RECORDS YET</div>";
